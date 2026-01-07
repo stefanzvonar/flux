@@ -1,9 +1,7 @@
-# Flux
+# [Flux](https://github.com/stevegrehan/flux) &middot; [![CI](https://github.com/stevegrehan/flux/actions/workflows/ci.yml/badge.svg)](https://github.com/stevegrehan/flux/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?style=flat&logo=typescript&logoColor=white) ![Preact](https://img.shields.io/badge/Preact-673ab8?style=flat&logo=preact&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js_21+-339933?style=flat&logo=node.js&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-f69220?style=flat&logo=pnpm&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ed?style=flat&logo=docker&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-enabled-f59e0b?style=flat)
 
-
-![Spec to Code](https://img.shields.io/badge/Spec→Code→Reality-f59e0b?style=for-the-badge)
-
-A Simple Kanban board application with MCP integration for LLM-powered task management.
+A fast, friendly Kanban board with MCP integration so your LLMs can help run the show.
 
 ## Features
 
@@ -13,6 +11,18 @@ A Simple Kanban board application with MCP integration for LLM-powered task mana
 - **Drag and drop** - Move tasks between columns and epics
 - **Search and filters** - Find tasks by text, filter by epic or blocked status
 - **MCP Server** - Allow LLMs to manage your Kanban board via Model Context Protocol
+
+## Roadmap
+
+- **Webhooks (up next)** - Push task/epic/project events to your tools in real time. This makes Flux a great control center for automations like notifying Slack, creating GitHub issues, updating CI status, or triggering other workflows whenever work moves on the board.
+- API tokens and scoped permissions
+- Activity feed and audit trail
+- More board views (swimlane toggles, compact mode, WIP limits)
+
+## Contributing
+
+Flux is early and moving quickly. If you want to help shape it, contributions are welcome.
+Open an issue for ideas and bugs, or pick something from the roadmap and send a PR.
 
 ## Installation (Docker)
 
