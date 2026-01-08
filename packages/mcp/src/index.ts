@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, openSync, closeSync, unlinkSync, renameSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -47,6 +47,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Data file path - shared with API server
 const DATA_DIR = join(__dirname, '../../data');
 const DATA_FILE = join(DATA_DIR, 'flux.json');
+const LOCK_FILE = `${DATA_FILE}.lock`;
+const TMP_FILE = `${DATA_FILE}.tmp`;
 
 // Default store data
 const defaultData: Store = {
@@ -67,17 +69,51 @@ function createFileAdapter(): { read: () => void; write: () => void; data: Store
 
   let data: Store = { ...defaultData };
 
+  const sleep = (ms: number) => {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  };
+
+  const withFileLock = <T,>(fn: () => T): T => {
+    const start = Date.now();
+    while (true) {
+      try {
+        const fd = openSync(LOCK_FILE, 'wx');
+        try {
+          return fn();
+        } finally {
+          closeSync(fd);
+          try {
+            unlinkSync(LOCK_FILE);
+          } catch {
+            // Best-effort cleanup; stale lock handled by timeout.
+          }
+        }
+      } catch (error: any) {
+        if (error?.code !== 'EEXIST') throw error;
+        if (Date.now() - start > 2000) {
+          throw new Error(`Timed out waiting for data lock: ${LOCK_FILE}`);
+        }
+        sleep(25);
+      }
+    }
+  };
+
   return {
     read() {
-      try {
-        const content = readFileSync(DATA_FILE, 'utf-8');
-        data = JSON.parse(content);
-      } catch {
-        data = { ...defaultData };
-      }
+      withFileLock(() => {
+        try {
+          const content = readFileSync(DATA_FILE, 'utf-8');
+          data = JSON.parse(content);
+        } catch {
+          data = { ...defaultData };
+        }
+      });
     },
     write() {
-      writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+      withFileLock(() => {
+        writeFileSync(TMP_FILE, JSON.stringify(data, null, 2));
+        renameSync(TMP_FILE, DATA_FILE);
+      });
     },
     get data() {
       return data;

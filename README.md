@@ -19,12 +19,8 @@ Ship with less chaos. Flux is a fast, simple Kanban board with MCP integration s
 
 - ✅ **Server-Sent Events (SSE)** - real-time updates for web while MCP is making changes
 - ✅ **Webhooks** - push task/epic/project events to other tools in real time
+- **Concurrency** - the shared single file (packages/data/flux.json) is a concurrency hot spot; concurrent writes potentially can clobber each other if two agents update at the same time
 - **Tests** - eek!
-
-## Contributing
-
-Flux is early and moving quickly. If you want to help shape it, contributions are welcome.
-Open an issue for ideas and bugs, or pick something from the roadmap and send a PR.
 
 ## Quick Start (Docker)
 
@@ -46,8 +42,21 @@ Then start the MCP:
 docker run -i --rm -v flux-data:/app/packages/data flux-mcp
 ```
 
-Web UI is available at [http://localhost:3000](http://localhost:3000).
+Web UI is [http://localhost:3000](http://localhost:3000).
 
+### Claude Code/Codex
+
+Add the MCP server:
+
+```bash
+claude mcp add flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
+```
+
+To share the configuration with your team (creates `.mcp.json`):
+
+```bash
+claude mcp add --scope project flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
+```
 
 ## Installation (Docker)
 
@@ -76,22 +85,6 @@ Add to your Claude Desktop configuration file:
 ```
 
 Restart Claude Desktop after saving.
-
-### Claude Code
-
-Add the MCP server:
-
-```bash
-claude mcp add flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
-```
-
-To share the configuration with your team (creates `.mcp.json`):
-
-```bash
-claude mcp add --scope project flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
-```
-
-Verify with `claude mcp list`.
 
 ### Web Interface
 
@@ -373,6 +366,11 @@ Create a webhook to post task updates to Slack:
 - **Backend:** Hono, Node.js
 - **MCP:** @modelcontextprotocol/sdk
 - **Build:** Vite, pnpm workspaces
+
+## Contributing
+
+Flux is early and moving quickly. If you want to help shape it, contributions are welcome.
+Open an issue for ideas and bugs, or pick something from the roadmap and send a PR.
 
 ## License
 
