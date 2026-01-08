@@ -10,9 +10,10 @@ interface TaskFormProps {
   onSave: () => Promise<void>
   task?: Task // If provided, edit mode; otherwise create mode
   projectId: string
+  defaultEpicId?: string // Pre-select epic when creating new task
 }
 
-export function TaskForm({ isOpen, onClose, onSave, task, projectId }: TaskFormProps) {
+export function TaskForm({ isOpen, onClose, onSave, task, projectId, defaultEpicId }: TaskFormProps) {
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<string>('backlog')
@@ -28,7 +29,7 @@ export function TaskForm({ isOpen, onClose, onSave, task, projectId }: TaskFormP
     if (isOpen) {
       loadFormData()
     }
-  }, [isOpen, task, projectId])
+  }, [isOpen, task, projectId, defaultEpicId])
 
   const loadFormData = async () => {
     const [epicsData, tasksData] = await Promise.all([
@@ -48,7 +49,7 @@ export function TaskForm({ isOpen, onClose, onSave, task, projectId }: TaskFormP
       setTitle('')
       setNotes('')
       setStatus('backlog')
-      setEpicId('')
+      setEpicId(defaultEpicId || '')
       setDependsOn([])
     }
   }

@@ -51,6 +51,7 @@ export function Board({ projectId }: BoardProps) {
     undefined
   );
   const [editingEpic, setEditingEpic] = useState<Epic | undefined>(undefined);
+  const [defaultEpicId, setDefaultEpicId] = useState<string | undefined>(undefined);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -158,8 +159,9 @@ export function Board({ projectId }: BoardProps) {
   };
 
   // Task form handlers
-  const openNewTask = () => {
+  const openNewTask = (epicId?: string) => {
     setEditingTask(undefined);
+    setDefaultEpicId(epicId);
     setTaskFormOpen(true);
   };
 
@@ -171,6 +173,7 @@ export function Board({ projectId }: BoardProps) {
   const closeTaskForm = () => {
     setTaskFormOpen(false);
     setEditingTask(undefined);
+    setDefaultEpicId(undefined);
   };
 
   // Epic form handlers
@@ -269,7 +272,7 @@ export function Board({ projectId }: BoardProps) {
             </div>
           </div>
           <div class="flex gap-2">
-            <button class="btn btn-primary btn-sm" onClick={openNewTask}>
+            <button class="btn btn-primary btn-sm" onClick={() => openNewTask()}>
               New Task
             </button>
             <button class="btn btn-neutral btn-sm" onClick={openNewEpic}>
@@ -437,6 +440,29 @@ export function Board({ projectId }: BoardProps) {
                               <span class="text-base-content/40 text-sm">
                                 {count}
                               </span>
+                              {status === "todo" && (
+                                <button
+                                  class="ml-auto w-5 h-5 rounded flex items-center justify-center text-base-content/40 hover:text-base-content/70 hover:bg-base-200 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openNewTask(epic.id);
+                                  }}
+                                  title="Add task to this epic"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fill-rule="evenodd"
+                                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                      clip-rule="evenodd"
+                                    />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -520,6 +546,29 @@ export function Board({ projectId }: BoardProps) {
                           <span class="text-base-content/40 text-sm">
                             {count}
                           </span>
+                          {status === "todo" && (
+                            <button
+                              class="ml-auto w-5 h-5 rounded flex items-center justify-center text-base-content/40 hover:text-base-content/70 hover:bg-base-200 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openNewTask(undefined);
+                              }}
+                              title="Add unassigned task"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-4 w-4"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fill-rule="evenodd"
+                                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                  clip-rule="evenodd"
+                                />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -560,6 +609,7 @@ export function Board({ projectId }: BoardProps) {
           onSave={refreshData}
           task={editingTask}
           projectId={projectId!}
+          defaultEpicId={defaultEpicId}
         />
         <EpicForm
           isOpen={epicFormOpen}
