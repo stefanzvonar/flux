@@ -8,8 +8,8 @@ import {
   getTasks,
   type TaskWithBlocked,
 } from "../stores";
-import type { Task, Epic, Status, Agent } from "@flux/shared";
-import { STATUSES, STATUS_CONFIG, AGENTS, AGENT_CONFIG } from "@flux/shared";
+import type { Task, Epic, Status } from "@flux/shared";
+import { STATUSES, STATUS_CONFIG } from "@flux/shared";
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -36,7 +36,6 @@ export function TaskForm({
   const [dependsOn, setDependsOn] = useState<string[]>([]);
   const [availableTasks, setAvailableTasks] = useState<TaskWithBlocked[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [agent, setAgent] = useState<Agent | "">("");
   const [dependencyFilter, setDependencyFilter] = useState("");
 
   const isEdit = !!task;
@@ -64,14 +63,12 @@ export function TaskForm({
       setStatus(task.status);
       setEpicId(task.epic_id || "");
       setDependsOn([...task.depends_on]);
-      setAgent(task.agent || "");
     } else {
       setTitle("");
       setNotes("");
       setStatus("todo");
       setEpicId(defaultEpicId || "");
       setDependsOn([]);
-      setAgent("");
     }
   };
 
@@ -88,7 +85,6 @@ export function TaskForm({
           status,
           epic_id: epicId || undefined,
           depends_on: dependsOn,
-          agent: agent || undefined,
         });
       } else {
         const newTask = await createTask(
@@ -97,15 +93,8 @@ export function TaskForm({
           epicId || undefined,
           notes.trim()
         );
-        const updates: Partial<Task> = {};
         if (dependsOn.length > 0) {
-          updates.depends_on = dependsOn;
-        }
-        if (agent) {
-          updates.agent = agent as Agent;
-        }
-        if (Object.keys(updates).length > 0) {
-          await updateTask(newTask.id, updates);
+          await updateTask(newTask.id, { depends_on: dependsOn });
         }
       }
       await onSave();
@@ -185,26 +174,6 @@ export function TaskForm({
             </select>
           </div>
         )}
-
-        <div class="form-control mb-4">
-          <label class="label">
-            <span class="label-text">Preferred Agent</span>
-          </label>
-          <select
-            class="select select-bordered w-full"
-            value={agent}
-            onChange={(e) =>
-              setAgent((e.target as HTMLSelectElement).value as Agent | "")
-            }
-          >
-            <option value="">No agent</option>
-            {AGENTS.map((a) => (
-              <option key={a} value={a}>
-                {AGENT_CONFIG[a].label}
-              </option>
-            ))}
-          </select>
-        </div>
 
         <div class="form-control mb-4">
           <label class="label">

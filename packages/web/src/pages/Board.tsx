@@ -13,7 +13,7 @@ import {
   getTasks,
   getEpics,
   updateTask,
-  archiveDoneTasks,
+  cleanupProject,
   type TaskWithBlocked,
 } from "../stores";
 import type { Epic } from "@flux/shared";
@@ -59,8 +59,13 @@ export function Board({ projectId }: BoardProps) {
   const [filterEpicId, setFilterEpicId] = useState<string | "all">("all");
   const [filterStatus, setFilterStatus] = useState<string | "all">("all");
 
-  // Archive confirmation dialog state
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  // Cleanup dialog state
+  const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
+  const [cleanupArchiveTasks, setCleanupArchiveTasks] = useState(true);
+  const [cleanupArchiveEpics, setCleanupArchiveEpics] = useState(true);
+
+  // View mode state
+  const [viewMode, setViewMode] = useState<"normal" | "condensed">("normal");
 
   // Configure sensors with activation constraint to allow clicks
   const sensors = useSensors(
@@ -196,11 +201,13 @@ export function Board({ projectId }: BoardProps) {
     setEditingEpic(undefined);
   };
 
-  // Archive handlers
-  const handleArchiveDone = async () => {
+  // Cleanup handlers
+  const handleCleanup = async () => {
     if (!projectId) return;
-    await archiveDoneTasks(projectId);
-    setArchiveDialogOpen(false);
+    await cleanupProject(projectId, cleanupArchiveTasks, cleanupArchiveEpics);
+    setCleanupDialogOpen(false);
+    setCleanupArchiveTasks(true);
+    setCleanupArchiveEpics(true);
     await refreshData();
   };
 
@@ -287,13 +294,13 @@ export function Board({ projectId }: BoardProps) {
             </div>
           </div>
           <div class="flex gap-2">
+            <ThemeToggle />
             <button class="btn btn-primary btn-sm" onClick={() => openNewTask()}>
               New Task
             </button>
             <button class="btn btn-neutral btn-sm" onClick={openNewEpic}>
               New Epic
             </button>
-            <ThemeToggle />
           </div>
         </div>
 
@@ -369,31 +376,45 @@ export function Board({ projectId }: BoardProps) {
                   Clear
                 </button>
               )}
-              {doneTaskCount > 0 && (
+              <div class="flex-1" />
+              <button
+                class="btn btn-ghost btn-sm"
+                onClick={() => setCleanupDialogOpen(true)}
+                title="Clean up board"
+              >
+                Clean Up
+              </button>
+              {/* View Toggle */}
+              <div class="join">
                 <button
-                  class="btn btn-ghost btn-sm gap-1"
-                  onClick={() => setArchiveDialogOpen(true)}
-                  title="Archive all done tasks"
+                  class={`btn btn-sm join-item ${viewMode === "normal" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setViewMode("normal")}
+                  title="Normal view"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    <path d="M13 11l9-9" />
-                    <path d="M17 2l5 5" />
-                    <path d="M14.5 8.5L3 20" />
-                    <path d="M3 20c0 0 2.5 1 5-1.5s3.5-4.5 3.5-4.5" />
-                    <path d="M7 13l4 4" />
+                    <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                   </svg>
-                  Tidy Up
                 </button>
-              )}
+                <button
+                  class={`btn btn-sm join-item ${viewMode === "condensed" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setViewMode("condensed")}
+                  title="Condensed view"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -527,6 +548,7 @@ export function Board({ projectId }: BoardProps) {
                                   epicTitle={epic.title}
                                   taskNumber={taskIndex + 1}
                                   onClick={() => openEditTask(task)}
+                                  condensed={viewMode === "condensed"}
                                 />
                               )
                             )}
@@ -630,6 +652,7 @@ export function Board({ projectId }: BoardProps) {
                               epicTitle="Unassigned"
                               taskNumber={taskIndex + 1}
                               onClick={() => openEditTask(task)}
+                              condensed={viewMode === "condensed"}
                             />
                           )
                         )}
@@ -659,30 +682,67 @@ export function Board({ projectId }: BoardProps) {
           projectId={projectId!}
         />
 
-        {/* Archive Confirmation Dialog */}
-        {archiveDialogOpen && (
+        {/* Cleanup Dialog */}
+        {cleanupDialogOpen && (
           <div class="modal modal-open">
             <div class="modal-box">
-              <h3 class="font-bold text-lg">Tidy Up Board</h3>
-              <p class="py-4">
-                Archive {doneTaskCount} completed task
-                {doneTaskCount !== 1 ? "s" : ""}? They'll be hidden from the board.
-              </p>
+              <h3 class="font-bold text-lg">Clean Up Board</h3>
+              <div class="py-4 space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    class="checkbox"
+                    checked={cleanupArchiveTasks}
+                    onChange={(e) =>
+                      setCleanupArchiveTasks((e.target as HTMLInputElement).checked)
+                    }
+                  />
+                  <span>Archive Done Tasks</span>
+                  {doneTaskCount > 0 && (
+                    <span class="text-base-content/50 text-sm">
+                      ({doneTaskCount} task{doneTaskCount !== 1 ? "s" : ""})
+                    </span>
+                  )}
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    class="checkbox"
+                    checked={cleanupArchiveEpics}
+                    onChange={(e) =>
+                      setCleanupArchiveEpics((e.target as HTMLInputElement).checked)
+                    }
+                  />
+                  <span>Archive Empty Epics</span>
+                </label>
+              </div>
               <div class="modal-action">
                 <button
                   class="btn btn-ghost"
-                  onClick={() => setArchiveDialogOpen(false)}
+                  onClick={() => {
+                    setCleanupDialogOpen(false);
+                    setCleanupArchiveTasks(true);
+                    setCleanupArchiveEpics(true);
+                  }}
                 >
                   Cancel
                 </button>
-                <button class="btn btn-primary" onClick={handleArchiveDone}>
-                  Tidy Up
+                <button
+                  class="btn btn-primary"
+                  onClick={handleCleanup}
+                  disabled={!cleanupArchiveTasks && !cleanupArchiveEpics}
+                >
+                  Clean
                 </button>
               </div>
             </div>
             <div
               class="modal-backdrop bg-black/50"
-              onClick={() => setArchiveDialogOpen(false)}
+              onClick={() => {
+                setCleanupDialogOpen(false);
+                setCleanupArchiveTasks(true);
+                setCleanupArchiveEpics(true);
+              }}
             />
           </div>
         )}

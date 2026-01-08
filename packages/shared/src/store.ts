@@ -264,3 +264,43 @@ export function archiveDoneTasks(projectId: string): number {
   }
   return count;
 }
+
+export function archiveEmptyEpics(projectId: string): number {
+  let count = 0;
+  const epicIdsToDelete: string[] = [];
+
+  db.data.epics.forEach(epic => {
+    if (epic.project_id === projectId) {
+      // Check if epic has any non-archived tasks
+      const hasActiveTasks = db.data.tasks.some(
+        task => task.epic_id === epic.id && !task.archived
+      );
+      if (!hasActiveTasks) {
+        epicIdsToDelete.push(epic.id);
+        count++;
+      }
+    }
+  });
+
+  if (epicIdsToDelete.length > 0) {
+    db.data.epics = db.data.epics.filter(e => !epicIdsToDelete.includes(e.id));
+    db.write();
+  }
+
+  return count;
+}
+
+export function cleanupProject(projectId: string, archiveTasks: boolean, archiveEpics: boolean): { archivedTasks: number; deletedEpics: number } {
+  let archivedTasks = 0;
+  let deletedEpics = 0;
+
+  if (archiveTasks) {
+    archivedTasks = archiveDoneTasks(projectId);
+  }
+
+  if (archiveEpics) {
+    deletedEpics = archiveEmptyEpics(projectId);
+  }
+
+  return { archivedTasks, deletedEpics };
+}

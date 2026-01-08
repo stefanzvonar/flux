@@ -127,9 +127,15 @@ export async function deleteTask(id: string): Promise<boolean> {
   return res.ok;
 }
 
-export async function archiveDoneTasks(projectId: string): Promise<{ success: boolean; count: number }> {
-  const res = await fetch(`${API_BASE}/projects/${projectId}/archive-done`, {
+export async function cleanupProject(
+  projectId: string,
+  archiveTasks: boolean,
+  archiveEpics: boolean
+): Promise<{ success: boolean; archivedTasks: number; deletedEpics: number }> {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/cleanup`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archiveTasks, archiveEpics }),
   });
   return res.json();
 }
