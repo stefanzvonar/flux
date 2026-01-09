@@ -25,6 +25,7 @@ import {
   DroppableColumn,
   ThemeToggle,
 } from "../components";
+import { useBoardPreferences } from "../hooks/useBoardPreferences";
 
 interface BoardProps extends RoutableProps {
   projectId?: string;
@@ -42,9 +43,6 @@ export function Board({ projectId }: BoardProps) {
   const [projectName, setProjectName] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Collapsed state for epic swimlanes
-  const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
-
   // Modal state
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [epicFormOpen, setEpicFormOpen] = useState(false);
@@ -52,7 +50,9 @@ export function Board({ projectId }: BoardProps) {
     undefined
   );
   const [editingEpic, setEditingEpic] = useState<Epic | undefined>(undefined);
-  const [defaultEpicId, setDefaultEpicId] = useState<string | undefined>(undefined);
+  const [defaultEpicId, setDefaultEpicId] = useState<string | undefined>(
+    undefined
+  );
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,11 +64,15 @@ export function Board({ projectId }: BoardProps) {
   const [cleanupArchiveTasks, setCleanupArchiveTasks] = useState(true);
   const [cleanupArchiveEpics, setCleanupArchiveEpics] = useState(true);
 
-  // View mode state
-  const [viewMode, setViewMode] = useState<"normal" | "condensed">("normal");
-
-  // Planning column collapsed state
-  const [planningCollapsed, setPlanningCollapsed] = useState(false);
+  // Board preferences (persisted to localStorage)
+  const {
+    viewMode,
+    planningCollapsed,
+    collapsedEpics,
+    setViewMode,
+    setPlanningCollapsed,
+    toggleEpicCollapse,
+  } = useBoardPreferences(projectId ?? "");
 
   // Configure sensors with activation constraint to allow clicks
   const sensors = useSensors(
@@ -182,19 +186,6 @@ export function Board({ projectId }: BoardProps) {
       });
       await refreshData();
     }
-  };
-
-  // Toggle epic collapse
-  const toggleEpicCollapse = (epicId: string) => {
-    setCollapsedEpics((prev) => {
-      const next = new Set(prev);
-      if (next.has(epicId)) {
-        next.delete(epicId);
-      } else {
-        next.add(epicId);
-      }
-      return next;
-    });
   };
 
   // Task form handlers
@@ -325,7 +316,10 @@ export function Board({ projectId }: BoardProps) {
           </div>
           <div class="flex gap-2">
             <ThemeToggle />
-            <button class="btn btn-primary btn-sm" onClick={() => openNewTask()}>
+            <button
+              class="btn btn-primary btn-sm"
+              onClick={() => openNewTask()}
+            >
               New Task
             </button>
             <button class="btn btn-neutral btn-sm" onClick={openNewEpic}>
@@ -417,7 +411,9 @@ export function Board({ projectId }: BoardProps) {
               {/* View Toggle */}
               <div class="join">
                 <button
-                  class={`btn btn-sm join-item ${viewMode === "normal" ? "btn-primary" : "btn-ghost"}`}
+                  class={`btn btn-sm join-item ${
+                    viewMode === "normal" ? "btn-primary" : "btn-ghost"
+                  }`}
                   onClick={() => setViewMode("normal")}
                   title="Normal view"
                 >
@@ -431,7 +427,9 @@ export function Board({ projectId }: BoardProps) {
                   </svg>
                 </button>
                 <button
-                  class={`btn btn-sm join-item ${viewMode === "condensed" ? "btn-primary" : "btn-ghost"}`}
+                  class={`btn btn-sm join-item ${
+                    viewMode === "condensed" ? "btn-primary" : "btn-ghost"
+                  }`}
                   onClick={() => setViewMode("condensed")}
                   title="Condensed view"
                 >
@@ -441,15 +439,25 @@ export function Board({ projectId }: BoardProps) {
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
-                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    <path
+                      fill-rule="evenodd"
+                      d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                      clip-rule="evenodd"
+                    />
                   </svg>
                 </button>
               </div>
               {/* Planning Column Toggle */}
               <button
-                class={`btn btn-sm ${planningCollapsed ? "btn-ghost" : "btn-ghost"}`}
+                class={`btn btn-sm ${
+                  planningCollapsed ? "btn-ghost" : "btn-ghost"
+                }`}
                 onClick={() => setPlanningCollapsed(!planningCollapsed)}
-                title={planningCollapsed ? "Show Planning column" : "Hide Planning column"}
+                title={
+                  planningCollapsed
+                    ? "Show Planning column"
+                    : "Hide Planning column"
+                }
               >
                 {planningCollapsed ? (
                   <svg
@@ -480,7 +488,7 @@ export function Board({ projectId }: BoardProps) {
                     />
                   </svg>
                 )}
-                <span class="ml-1 text-xs">Planning</span>
+                <span class="ml-1 text-xs">Show Planning</span>
               </button>
             </div>
           </div>
@@ -564,7 +572,8 @@ export function Board({ projectId }: BoardProps) {
                                 class="text-xs font-medium text-base-content/60 whitespace-nowrap"
                                 style={{ transform: "rotate(-90deg)" }}
                               >
-                                Planning ({getColumnTasks("planning", epic.id).length})
+                                Planning (
+                                {getColumnTasks("planning", epic.id).length})
                               </span>
                             </div>
                             <svg
@@ -586,12 +595,24 @@ export function Board({ projectId }: BoardProps) {
                         {/* Main Columns Container */}
                         <div class="flex-1">
                           {/* Column Headers */}
-                          <div class={`grid ${planningCollapsed ? "grid-cols-3" : "grid-cols-4"} gap-4 mb-3`}>
-                            {STATUSES.filter(s => !planningCollapsed || s !== "planning").map((status) => {
+                          <div
+                            class={`grid ${
+                              planningCollapsed ? "grid-cols-3" : "grid-cols-4"
+                            } gap-4 mb-3`}
+                          >
+                            {STATUSES.filter(
+                              (s) => !planningCollapsed || s !== "planning"
+                            ).map((status) => {
                               const config = STATUS_CONFIG[status];
-                              const count = getColumnTasks(status, epic.id).length;
+                              const count = getColumnTasks(
+                                status,
+                                epic.id
+                              ).length;
                               return (
-                                <div key={status} class="flex items-center gap-2">
+                                <div
+                                  key={status}
+                                  class="flex items-center gap-2"
+                                >
                                   <span
                                     class="w-2 h-2 rounded-full"
                                     style={{ backgroundColor: config.color }}
@@ -631,8 +652,14 @@ export function Board({ projectId }: BoardProps) {
                           </div>
 
                           {/* Columns */}
-                          <div class={`grid ${planningCollapsed ? "grid-cols-3" : "grid-cols-4"} gap-4`}>
-                            {STATUSES.filter(s => !planningCollapsed || s !== "planning").map((status) => (
+                          <div
+                            class={`grid ${
+                              planningCollapsed ? "grid-cols-3" : "grid-cols-4"
+                            } gap-4`}
+                          >
+                            {STATUSES.filter(
+                              (s) => !planningCollapsed || s !== "planning"
+                            ).map((status) => (
                               <DroppableColumn
                                 key={getDropZoneId(status, epic.id)}
                                 id={getDropZoneId(status, epic.id)}
@@ -708,7 +735,8 @@ export function Board({ projectId }: BoardProps) {
                             class="text-xs font-medium text-base-content/60 whitespace-nowrap"
                             style={{ transform: "rotate(-90deg)" }}
                           >
-                            Planning ({getColumnTasks("planning", undefined).length})
+                            Planning (
+                            {getColumnTasks("planning", undefined).length})
                           </span>
                         </div>
                         <svg
@@ -729,10 +757,19 @@ export function Board({ projectId }: BoardProps) {
 
                     {/* Main Columns Container */}
                     <div class="flex-1">
-                      <div class={`grid ${planningCollapsed ? "grid-cols-3" : "grid-cols-4"} gap-4 mb-3`}>
-                        {STATUSES.filter(s => !planningCollapsed || s !== "planning").map((status) => {
+                      <div
+                        class={`grid ${
+                          planningCollapsed ? "grid-cols-3" : "grid-cols-4"
+                        } gap-4 mb-3`}
+                      >
+                        {STATUSES.filter(
+                          (s) => !planningCollapsed || s !== "planning"
+                        ).map((status) => {
                           const config = STATUS_CONFIG[status];
-                          const count = getColumnTasks(status, undefined).length;
+                          const count = getColumnTasks(
+                            status,
+                            undefined
+                          ).length;
                           return (
                             <div key={status} class="flex items-center gap-2">
                               <span
@@ -773,12 +810,20 @@ export function Board({ projectId }: BoardProps) {
                         })}
                       </div>
 
-                      <div class={`grid ${planningCollapsed ? "grid-cols-3" : "grid-cols-4"} gap-4`}>
-                        {STATUSES.filter(s => !planningCollapsed || s !== "planning").map((status) => (
+                      <div
+                        class={`grid ${
+                          planningCollapsed ? "grid-cols-3" : "grid-cols-4"
+                        } gap-4`}
+                      >
+                        {STATUSES.filter(
+                          (s) => !planningCollapsed || s !== "planning"
+                        ).map((status) => (
                           <DroppableColumn
                             key={getDropZoneId(status, undefined)}
                             id={getDropZoneId(status, undefined)}
-                            isEmpty={getColumnTasks(status, undefined).length === 0}
+                            isEmpty={
+                              getColumnTasks(status, undefined).length === 0
+                            }
                           >
                             {getColumnTasks(status, undefined).map(
                               (task, taskIndex) => (
@@ -833,7 +878,9 @@ export function Board({ projectId }: BoardProps) {
                     class="checkbox"
                     checked={cleanupArchiveTasks}
                     onChange={(e) =>
-                      setCleanupArchiveTasks((e.target as HTMLInputElement).checked)
+                      setCleanupArchiveTasks(
+                        (e.target as HTMLInputElement).checked
+                      )
                     }
                   />
                   <span>Archive Done Tasks</span>
@@ -849,7 +896,9 @@ export function Board({ projectId }: BoardProps) {
                     class="checkbox"
                     checked={cleanupArchiveEpics}
                     onChange={(e) =>
-                      setCleanupArchiveEpics((e.target as HTMLInputElement).checked)
+                      setCleanupArchiveEpics(
+                        (e.target as HTMLInputElement).checked
+                      )
                     }
                   />
                   <span>Archive Empty Epics</span>
