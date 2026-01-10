@@ -22,6 +22,10 @@ Ever felt like your projects are a tangled mess of tools, bots, and half-baked i
 
 Flux isn't just another Kanban board – it's the open-source engine for the future of work. Developers love it because it's hackable, extensible, and screams "build on me!" If you're tinkering with AI agents or just need a better way to organize, this is your ticket to productivity paradise.
 
+<p align="center">
+  <img src="./docs/sample-workflow.png" />
+</p>
+
 ## Features That'll Make You Say "whoa" 🔥
 
 - 🚀 **Multi-Project Kanban Boards**: Juggle epics, tasks, and dependencies like a pro.
