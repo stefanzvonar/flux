@@ -2,81 +2,52 @@
 
 > Flux is a **completely open, unopinionated task management engine**.
 
-It doesn’t tell you how to work, who should do the work, or what should execute it.  
-Flux simply tracks **what needs to be done** — and leaves everything else up to you.
+<img src="./docs/kibo-mascot.png" width="300" />
 
-- Create tasks manually, via APIs, MCP, or automation tools.  
-- Execute them yourself, with AI agents, or through systems like n8n.  
-- Close them by hand or programmatically.
+Flux is your ultimate task management sidekick – a lightning-fast Kanban board that lets humans, AI agents, and automations team up to crush chaos. With built-in MCP (Model Context Protocol) integration, your LLMs can jump in and run the show: creating tasks, updating statuses, and keeping everything in sync. No more rigid workflows or SaaS lock-in – just pure, flexible productivity magic! ✨
 
-Flux is just the **source of truth for tasks**.
-
-Everything else is optional.
+Why settle for boring task trackers when you can enter the Flux Zone? Inspired by the wild energy of a flux capacitor (hello, Back to the Future fans!), this open-source gem decouples tasks from execution, making it the perfect playground for developers, teams, and AI enthusiasts. Ready to go viral? Star this repo and let's make task management fun again! ⭐
 
 ![Demo](./docs/demo.gif)
 
-## Why Flux?
+## Why Flux? Because Chaos is So Last Year 😎
 
-Most task systems tightly couple **tasks**, **workflows**, and **execution**.  
-Flux deliberately separates them.
+Ever felt like your projects are a tangled mess of tools, bots, and half-baked ideas? Flux fixes that by being:
 
-- Tasks live in Flux
-- Execution happens anywhere
-- Humans, agents, and automation all coexist
-- No enforced process
+- **Execution-Agnostic**: Tasks live here, but how they get done? That's up to you – manual, API, webhooks, or let Claude/GPT take the wheel.
+- **AI-Powered Awesomeness**: Hook up your LLMs via MCP and watch them automate the mundane. "Hey AI, create a task for fixing that bug!" – Done. 🤖
+- **Simple & Speedy**: Single-file SQLite backend, drag-and-drop UI, real-time updates. No bloat, just flow.
 
-If you want a rigid workflow, Flux isn’t for you.  
-If you want **maximum flexibility**, it probably is.
+Flux isn't just another Kanban board – it's the open-source engine for the future of work. Developers love it because it's hackable, extensible, and screams "build on me!" If you're tinkering with AI agents or just need a better way to organize, this is your ticket to productivity paradise.
 
-## What Flux Is (and Is Not)
+## Features That'll Make You Say "whoa" 🔥
 
-| ✅ **Flux *is*** | ❌ **Flux *is not*** |
-|------------------|----------------------|
-| 🔓 Open source and self-hosted | 📋 A project management methodology |
-| 🔌 API-first | 🧱 A UI-heavy SaaS |
-| 🔀 Execution-agnostic | 🤖 An AI platform that locks you into one model |
-| 👥 Friendly to humans, AI agents, and automation | 🧠 A system that assumes how work should happen |
-| 🧩 A stable foundation for any workflow | 🚧 A tool that forces process or structure |
+- 🚀 **Multi-Project Kanban Boards**: Juggle epics, tasks, and dependencies like a pro.
+- 🔗 **Task Dependencies**: See what's blocked at a glance – no more surprises!
+- 🤖 **MCP Integration**: Let LLMs list, create, update, or delete tasks programmatically.
+- 📡 **Real-Time Updates**: SSE keeps everyone in sync – web UI, APIs, and beyond.
+- 🪝 **Webhooks Galore**: Integrate with Slack, GitHub, CI/CD – trigger actions on task changes.
+- 📱 **API-First Design**: Full REST endpoints for ultimate control.
+- 💾 **SQLite Simplicity**: All data in one file, with JSON import for easy starts.
 
-## Features
-
-- **Multi-project support** - Manage multiple Kanban boards
-- **Epics and Tasks** - Organize work with epics (swimlanes) and tasks
-- **Dependencies** - Track task/epic dependencies with blocked indicators
-- **Drag and drop** - Move tasks between columns and epics
-- **Search and filters** - Find tasks by text, filter by epic or blocked status
-- **MCP Server** - Allow LLMs to manage your Kanban board via Model Context Protocol
-- **Real-time updates** - SSE-powered live updates when data changes
-- **Webhooks** - Push notifications to external services when events occur (Slack, GitHub, CI, etc.)
-
-## Quick Start (Docker)
-
-macOS/Linux:
+## Quick Start: Up and Running in a Flux Second ⚡
 
 ```bash
+# macOS/Linux
 curl -fsSL https://raw.githubusercontent.com/sirsjg/flux/main/scripts/quickstart.sh | bash
-```
 
-Windows (PowerShell):
-
-```powershell
+## Windows (PowerShell)
 irm https://raw.githubusercontent.com/sirsjg/flux/main/scripts/quickstart.ps1 | iex
 ```
 
 This will start both the web UI ([http://localhost:3000](http://localhost:3000)) and the MCP server. Press Ctrl+C to stop the MCP server when you're done.
 
-### Claude Code/Codex
-
-Add the MCP server:
-
 ```bash
+# Claude Code
 claude mcp add flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
-```
 
-To share the configuration with your team (creates `.mcp.json`):
-
-```bash
-claude mcp add --scope project flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
+# Codex
+codex mcp add flux -- docker run -i --rm -v flux-data:/app/packages/data flux-mcp
 ```
 
 ## Installation (Docker)
@@ -185,12 +156,10 @@ Add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_conf
 For Claude Code:
 
 ```bash
+# Claude Code
 claude mcp add flux -- node /path/to/flux/packages/mcp/dist/index.js
-```
 
-For Codex:
-
-```bash
+# Codex
 codex mcp add flux -- node /path/to/flux/packages/mcp/dist/index.js
 ```
 
