@@ -1,6 +1,6 @@
 # Flux &middot; [![CI](https://github.com/sirsjg/flux/actions/workflows/ci.yml/badge.svg)](https://github.com/sirsjg/flux/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?style=flat&logo=typescript&logoColor=white) ![Preact](https://img.shields.io/badge/Preact-673ab8?style=flat&logo=preact&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js_21+-339933?style=flat&logo=node.js&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-f69220?style=flat&logo=pnpm&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ed?style=flat&logo=docker&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-enabled-f59e0b?style=flat)
 
-> Flux is a **completely open, unopinionated task management engine**.
+> Flux is a **completely open, hackable, unopinionated task management engine**.
 
 <p align="center">
   <img src="./docs/kibo-mascot.png" width="220" />
@@ -23,7 +23,9 @@ Ever felt like your projects are a tangled mess of tools, bots, and half-baked i
 Flux isn't just another Kanban board – it's the open-source engine for the future of work. Developers love it because it's hackable, extensible, and screams "build on me!" If you're tinkering with AI agents or just need a better way to organize, this is your ticket to productivity paradise.
 
 <p align="center">
-  <img src="./docs/sample-workflow.png" />
+  <img src="./docs/sample-workflow.png" alt="Sample workflow" />
+  <br />
+  <em>Sample workflow</em>
 </p>
 
 ## Features That'll Make You Say "whoa" 🔥
