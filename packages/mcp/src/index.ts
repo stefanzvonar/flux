@@ -7,9 +7,10 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, openSync, closeSync, unlinkSync, renameSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
 import {
   setStorageAdapter,
   initStore,
@@ -46,9 +47,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Data file path - shared with API server
 const DATA_DIR = join(__dirname, '../../data');
-const DATA_FILE = join(DATA_DIR, 'flux.json');
-const LOCK_FILE = `${DATA_FILE}.lock`;
-const TMP_FILE = `${DATA_FILE}.tmp`;
+const DB_FILE = join(DATA_DIR, 'flux.sqlite');
+const LEGACY_JSON_FILE = join(DATA_DIR, 'flux.json');
 
 // Default store data
 const defaultData: Store = {
@@ -57,63 +57,70 @@ const defaultData: Store = {
   tasks: [],
 };
 
-// Create file-based storage adapter
-function createFileAdapter(): { read: () => void; write: () => void; data: Store } {
+// Create SQLite-based storage adapter
+function createSqliteAdapter(): { read: () => void; write: () => void; data: Store } {
   if (!existsSync(DATA_DIR)) {
     mkdirSync(DATA_DIR, { recursive: true });
   }
 
-  if (!existsSync(DATA_FILE)) {
-    writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
-  }
+  const db = new Database(DB_FILE);
+  db.pragma('journal_mode = WAL');
+  db.exec('CREATE TABLE IF NOT EXISTS store (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)');
+
+  const selectStmt = db.prepare('SELECT data FROM store WHERE id = 1');
+  const insertStmt = db.prepare('INSERT INTO store (id, data) VALUES (1, ?)');
+  const updateStmt = db.prepare('UPDATE store SET data = ? WHERE id = 1');
 
   let data: Store = { ...defaultData };
 
-  const sleep = (ms: number) => {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  const loadFromDb = (): boolean => {
+    const row = selectStmt.get() as { data?: string } | undefined;
+    if (row?.data) {
+      try {
+        data = JSON.parse(row.data) as Store;
+        return true;
+      } catch {
+        data = { ...defaultData };
+        return false;
+      }
+    }
+    return false;
   };
 
-  const withFileLock = <T,>(fn: () => T): T => {
-    const start = Date.now();
-    while (true) {
-      try {
-        const fd = openSync(LOCK_FILE, 'wx');
-        try {
-          return fn();
-        } finally {
-          closeSync(fd);
-          try {
-            unlinkSync(LOCK_FILE);
-          } catch {
-            // Best-effort cleanup; stale lock handled by timeout.
-          }
-        }
-      } catch (error: any) {
-        if (error?.code !== 'EEXIST') throw error;
-        if (Date.now() - start > 2000) {
-          throw new Error(`Timed out waiting for data lock: ${LOCK_FILE}`);
-        }
-        sleep(25);
-      }
+  const persist = (): void => {
+    const serialized = JSON.stringify(data);
+    const row = selectStmt.get() as { data?: string } | undefined;
+    if (row) {
+      updateStmt.run(serialized);
+    } else {
+      insertStmt.run(serialized);
+    }
+  };
+
+  const migrateFromJson = (): boolean => {
+    if (!existsSync(LEGACY_JSON_FILE)) return false;
+    try {
+      const content = readFileSync(LEGACY_JSON_FILE, 'utf-8');
+      data = JSON.parse(content) as Store;
+      persist();
+      unlinkSync(LEGACY_JSON_FILE);
+      return true;
+    } catch {
+      return false;
     }
   };
 
   return {
     read() {
-      withFileLock(() => {
-        try {
-          const content = readFileSync(DATA_FILE, 'utf-8');
-          data = JSON.parse(content);
-        } catch {
-          data = { ...defaultData };
-        }
-      });
+      const loaded = loadFromDb();
+      if (loaded) return;
+      data = { ...defaultData };
+      if (!migrateFromJson()) {
+        persist();
+      }
     },
     write() {
-      withFileLock(() => {
-        writeFileSync(TMP_FILE, JSON.stringify(data, null, 2));
-        renameSync(TMP_FILE, DATA_FILE);
-      });
+      persist();
     },
     get data() {
       return data;
@@ -122,8 +129,8 @@ function createFileAdapter(): { read: () => void; write: () => void; data: Store
 }
 
 // Initialize storage
-const fileAdapter = createFileAdapter();
-setStorageAdapter(fileAdapter);
+const sqliteAdapter = createSqliteAdapter();
+setStorageAdapter(sqliteAdapter);
 initStore();
 
 // Create MCP server
@@ -527,7 +534,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   // Re-read data to get latest state (in case web app made changes)
-  fileAdapter.read();
+  sqliteAdapter.read();
 
   switch (name) {
     // Project operations

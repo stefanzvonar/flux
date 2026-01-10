@@ -4,7 +4,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 ## Project Overview
 
-Flux is a Kanban board application with multi-project support, designed for both web UI and AI assistant integration via MCP (Model Context Protocol). It's a TypeScript monorepo with four packages sharing a common JSON data store.
+Flux is a Kanban board application with multi-project support, designed for both web UI and AI assistant integration via MCP (Model Context Protocol). It's a TypeScript monorepo with four packages sharing a common SQLite data store.
 
 ## Common Commands
 
@@ -49,11 +49,11 @@ packages/
 ├── web/        # Preact + Vite + Tailwind/DaisyUI frontend with drag-drop (@dnd-kit)
 ├── server/     # Hono REST API server
 ├── mcp/        # MCP server for LLM integration (Claude Desktop, Claude Code)
-└── data/       # Shared JSON file storage (flux.json)
+└── data/       # Shared SQLite file storage (flux.sqlite)
 ```
 
 **Key architectural decisions:**
-- All interfaces (web UI, REST API, MCP) read/write to the same `packages/data/flux.json` file
+- All interfaces (web UI, REST API, MCP) read/write to the same `packages/data/flux.sqlite` file
 - Storage adapter pattern in `packages/shared/src/store.ts` allows pluggable backends
 - Tasks can depend on other tasks/epics; blocked tasks show visual indicators
 - Epics act as swimlanes grouping tasks on the Kanban board
@@ -91,7 +91,7 @@ type Project = {
 
 - **Frontend:** Preact, Vite, Tailwind CSS, DaisyUI, @dnd-kit
 - **Backend:** Hono, Node.js 22
-- **Data:** lowdb (JSON file persistence)
+- **Data:** SQLite (single-file persistence)
 - **LLM Integration:** @modelcontextprotocol/sdk
 - **Build:** TypeScript 5.6, pnpm workspaces
 

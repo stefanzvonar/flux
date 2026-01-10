@@ -4,7 +4,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, watchFile, openSync, closeSync, unlinkSync, renameSync, statSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, watchFile, statSync } from 'fs';
+import Database from 'better-sqlite3';
 import {
   setStorageAdapter,
   initStore,
@@ -43,9 +44,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Data file path
 const DATA_DIR = join(__dirname, '../../data');
-const DATA_FILE = join(DATA_DIR, 'flux.json');
-const LOCK_FILE = `${DATA_FILE}.lock`;
-const TMP_FILE = `${DATA_FILE}.tmp`;
+const DB_FILE = join(DATA_DIR, 'flux.sqlite');
+const LEGACY_JSON_FILE = join(DATA_DIR, 'flux.json');
+const WAL_FILE = `${DB_FILE}-wal`;
 
 // Default store data
 const defaultData: Store = {
@@ -54,65 +55,71 @@ const defaultData: Store = {
   tasks: [],
 };
 
-// Create file-based storage adapter
-function createFileAdapter(): { read: () => void; write: () => void; data: Store } {
+// Create SQLite-based storage adapter
+function createSqliteAdapter(): { read: () => void; write: () => void; data: Store } {
   // Ensure data directory exists
   if (!existsSync(DATA_DIR)) {
     mkdirSync(DATA_DIR, { recursive: true });
   }
 
-  // Initialize file if it doesn't exist
-  if (!existsSync(DATA_FILE)) {
-    writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
-  }
+  const db = new Database(DB_FILE);
+  db.pragma('journal_mode = WAL');
+  db.exec('CREATE TABLE IF NOT EXISTS store (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)');
+
+  const selectStmt = db.prepare('SELECT data FROM store WHERE id = 1');
+  const insertStmt = db.prepare('INSERT INTO store (id, data) VALUES (1, ?)');
+  const updateStmt = db.prepare('UPDATE store SET data = ? WHERE id = 1');
 
   let data: Store = { ...defaultData };
 
-  const sleep = (ms: number) => {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  const loadFromDb = (): boolean => {
+    const row = selectStmt.get() as { data?: string } | undefined;
+    if (row?.data) {
+      try {
+        data = JSON.parse(row.data) as Store;
+        return true;
+      } catch {
+        data = { ...defaultData };
+        return false;
+      }
+    }
+    return false;
   };
 
-  const withFileLock = <T,>(fn: () => T): T => {
-    const start = Date.now();
-    while (true) {
-      try {
-        const fd = openSync(LOCK_FILE, 'wx');
-        try {
-          return fn();
-        } finally {
-          closeSync(fd);
-          try {
-            unlinkSync(LOCK_FILE);
-          } catch {
-            // Best-effort cleanup; stale lock handled by timeout.
-          }
-        }
-      } catch (error: any) {
-        if (error?.code !== 'EEXIST') throw error;
-        if (Date.now() - start > 2000) {
-          throw new Error(`Timed out waiting for data lock: ${LOCK_FILE}`);
-        }
-        sleep(25);
-      }
+  const persist = (): void => {
+    const serialized = JSON.stringify(data);
+    const row = selectStmt.get() as { data?: string } | undefined;
+    if (row) {
+      updateStmt.run(serialized);
+    } else {
+      insertStmt.run(serialized);
+    }
+  };
+
+  const migrateFromJson = (): boolean => {
+    if (!existsSync(LEGACY_JSON_FILE)) return false;
+    try {
+      const content = readFileSync(LEGACY_JSON_FILE, 'utf-8');
+      data = JSON.parse(content) as Store;
+      persist();
+      unlinkSync(LEGACY_JSON_FILE);
+      return true;
+    } catch {
+      return false;
     }
   };
 
   return {
     read() {
-      withFileLock(() => {
-        try {
-          const content = readFileSync(DATA_FILE, 'utf-8');
-          data = JSON.parse(content);
-        } catch {
-          data = { ...defaultData };
-        }
-      });
+      const loaded = loadFromDb();
+      if (loaded) return;
+      data = { ...defaultData };
+      if (!migrateFromJson()) {
+        persist();
+      }
     },
     write() {
-      withFileLock(() => {
-        writeFileSync(TMP_FILE, JSON.stringify(data, null, 2));
-        renameSync(TMP_FILE, DATA_FILE);
-      });
+      persist();
     },
     get data() {
       return data;
@@ -121,8 +128,8 @@ function createFileAdapter(): { read: () => void; write: () => void; data: Store
 }
 
 // Initialize storage
-const fileAdapter = createFileAdapter();
-setStorageAdapter(fileAdapter);
+const sqliteAdapter = createSqliteAdapter();
+setStorageAdapter(sqliteAdapter);
 initStore();
 
 // Set up webhook event handler
@@ -180,21 +187,30 @@ const notifyDataChange = () => {
 };
 
 // Use watchFile with polling - more reliable than watch() on macOS with atomic renames
-let lastMtime = 0;
-try {
-  lastMtime = statSync(DATA_FILE).mtimeMs;
-} catch {
-  // File may not exist yet
-}
+const getMtime = (filePath: string): number => {
+  try {
+    return statSync(filePath).mtimeMs;
+  } catch {
+    return 0;
+  }
+};
 
-watchFile(DATA_FILE, { interval: 100 }, (curr) => {
-  // Only trigger if modification time actually changed (avoids duplicate events)
-  if (curr.mtimeMs !== lastMtime) {
-    lastMtime = curr.mtimeMs;
-    fileAdapter.read();  // Reload data from disk before notifying clients
+let lastDbMtime = getMtime(DB_FILE);
+let lastWalMtime = getMtime(WAL_FILE);
+
+const handleDbChange = () => {
+  const nextDbMtime = getMtime(DB_FILE);
+  const nextWalMtime = getMtime(WAL_FILE);
+  if (nextDbMtime !== lastDbMtime || nextWalMtime !== lastWalMtime) {
+    lastDbMtime = nextDbMtime;
+    lastWalMtime = nextWalMtime;
+    sqliteAdapter.read();
     notifyDataChange();
   }
-});
+};
+
+watchFile(DB_FILE, { interval: 100 }, handleDbChange);
+watchFile(WAL_FILE, { interval: 100 }, handleDbChange);
 
 app.get('/api/events', () => {
   let clientController: ReadableStreamDefaultController<Uint8Array> | null = null;

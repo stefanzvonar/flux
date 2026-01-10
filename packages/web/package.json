@@ -13,7 +13,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@flux/shared": "workspace:*",
-    "lowdb": "^7.0.1",
     "preact": "^10.24.3",
     "preact-router": "^4.1.2"
   },

@@ -11,6 +11,9 @@ WORKDIR /app
 # ============ Dependencies Stage ============
 FROM base AS deps
 
+# Native deps for better-sqlite3
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/shared/package.json ./packages/shared/
