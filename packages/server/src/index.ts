@@ -9,6 +9,7 @@ import Database from 'better-sqlite3';
 import {
   setStorageAdapter,
   initStore,
+  resetStore,
   getProjects,
   getProject,
   createProject,
@@ -395,6 +396,12 @@ app.post('/api/projects/:projectId/cleanup', async (c) => {
     body.archiveEpics ?? true
   );
   return c.json({ success: true, ...result });
+});
+
+// Reset database (wipe all data)
+app.post('/api/reset', (c) => {
+  resetStore();
+  return c.json({ success: true });
 });
 
 // ============ Webhook Routes ============

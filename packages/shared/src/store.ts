@@ -56,6 +56,17 @@ export function initStore(): Store {
   return db.data;
 }
 
+export function resetStore(): void {
+  if (!db) throw new Error('Storage adapter not set. Call setStorageAdapter first.');
+  db.data.projects = [];
+  db.data.epics = [];
+  db.data.tasks = [];
+  const data = db.data as StoreWithWebhooks;
+  data.webhooks = [];
+  data.webhook_deliveries = [];
+  db.write();
+}
+
 // ============ Project Operations ============
 
 export function getProjects(): Project[] {

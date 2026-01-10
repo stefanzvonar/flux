@@ -1,7 +1,13 @@
 import { useEffect, useState } from "preact/hooks";
 import { route, RoutableProps } from "preact-router";
-import { getProjects, updateProject, type ProjectWithStats } from "../stores";
+import {
+  getProjects,
+  resetDatabase,
+  updateProject,
+  type ProjectWithStats,
+} from "../stores";
 import { Modal, ThemeToggle } from "../components";
+import { WebhooksPanel } from "../components/WebhooksPanel";
 
 export function ProjectList(_props: RoutableProps) {
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
@@ -12,16 +18,65 @@ export function ProjectList(_props: RoutableProps) {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<
+    "configuration" | "webhooks" | "reset"
+  >("configuration");
+  const [apiStatus, setApiStatus] = useState<"online" | "offline" | "unknown">(
+    "unknown"
+  );
+  const [sseStatus, setSseStatus] = useState<"online" | "offline" | "unknown">(
+    "unknown"
+  );
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     refreshProjects();
   }, []);
 
+  useEffect(() => {
+    if (!settingsOpen) {
+      setSseStatus("unknown");
+      return;
+    }
+    setSseStatus("unknown");
+    const eventsBase = import.meta.env.DEV ? "http://localhost:3000" : "";
+    const source = new EventSource(`${eventsBase}/api/events`);
+    let connected = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!connected) setSseStatus("offline");
+    }, 3000);
+
+    const handleConnected = () => {
+      connected = true;
+      setSseStatus("online");
+    };
+
+    source.addEventListener("connected", handleConnected);
+    source.onerror = () => {
+      if (!connected) setSseStatus("offline");
+    };
+
+    return () => {
+      source.removeEventListener("connected", handleConnected);
+      source.close();
+      window.clearTimeout(timeoutId);
+    };
+  }, [settingsOpen]);
+
   const refreshProjects = async () => {
     setLoading(true);
-    const allProjects = await getProjects();
-    setProjects(allProjects);
-    setLoading(false);
+    setApiStatus("unknown");
+    try {
+      const allProjects = await getProjects();
+      setProjects(allProjects);
+      setApiStatus("online");
+    } catch {
+      setProjects([]);
+      setApiStatus("offline");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openEditModal = (project: ProjectWithStats) => {
@@ -35,6 +90,26 @@ export function ProjectList(_props: RoutableProps) {
     setEditingProject(null);
     setEditName("");
     setEditDescription("");
+  };
+
+  const openSettings = () => {
+    setSettingsSection("configuration");
+    setSettingsOpen(true);
+  };
+
+  const handleReset = async () => {
+    if (resetting) return;
+    const confirmed = confirm(
+      "This will wipe all projects, tasks, epics, and webhooks. Continue?"
+    );
+    if (!confirmed) return;
+    setResetting(true);
+    try {
+      await resetDatabase();
+      await refreshProjects();
+    } finally {
+      setResetting(false);
+    }
   };
 
   const handleEditSubmit = async (e: Event) => {
@@ -58,6 +133,45 @@ export function ProjectList(_props: RoutableProps) {
     }
   };
 
+  const apiOrigin =
+    typeof window === "undefined" ? "" : window.location.origin;
+  const apiLocation = import.meta.env.DEV
+    ? "http://localhost:3000/api"
+    : `${apiOrigin}/api`;
+  const sseLocation = import.meta.env.DEV
+    ? "http://localhost:3000/api/events"
+    : `${apiOrigin}/api/events`;
+
+  const statusLabel = (status: "online" | "offline" | "unknown") => {
+    if (status === "online") return "Online";
+    if (status === "offline") return "Offline";
+    return "Checking";
+  };
+
+  const statusDotClass = (status: "online" | "offline" | "unknown") => {
+    if (status === "online") return "bg-success";
+    if (status === "offline") return "bg-error";
+    return "bg-base-content/30";
+  };
+
+  const settingsSections = [
+    {
+      id: "configuration",
+      title: "Configuration",
+      subtitle: "API endpoints and realtime status",
+    },
+    {
+      id: "webhooks",
+      title: "Webhooks",
+      subtitle: "Outbound events and delivery history",
+    },
+    {
+      id: "reset",
+      title: "Reset",
+      subtitle: "Wipe data and start fresh",
+    },
+  ] as const;
+
   if (loading) {
     return (
       <div class="min-h-screen bg-base-200 flex items-center justify-center">
@@ -74,14 +188,14 @@ export function ProjectList(_props: RoutableProps) {
         </div>
         <div class="flex-none flex items-center gap-2">
           <button
-            class="btn btn-ghost btn-sm"
-            onClick={() => route('/webhooks')}
-            title="Webhooks"
+            class="btn btn-ghost btn-sm btn-circle"
+            onClick={openSettings}
+            title="Settings"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-1.14 1.603-1.14 1.902 0a1.724 1.724 0 002.591 1.008c.994-.574 2.158.59 1.584 1.584a1.724 1.724 0 001.008 2.59c1.14.3 1.14 1.604 0 1.903a1.724 1.724 0 00-1.008 2.59c.574.994-.59 2.158-1.584 1.584a1.724 1.724 0 00-2.59 1.008c-.3 1.14-1.604 1.14-1.903 0a1.724 1.724 0 00-2.59-1.008c-.994.574-2.158-.59-1.584-1.584a1.724 1.724 0 00-1.008-2.59c-1.14-.3-1.14-1.604 0-1.903a1.724 1.724 0 001.008-2.59c-.574-.994.59-2.158 1.584-1.584.89.515 2.042.032 2.59-1.008z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="hidden sm:inline ml-1">Webhooks</span>
           </button>
           <ThemeToggle />
         </div>
@@ -157,6 +271,142 @@ export function ProjectList(_props: RoutableProps) {
           ))}
         </div>
       </div>
+
+      <Modal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="Settings"
+        boxClassName="!w-[80vw] !h-[80vh] !max-w-none !max-h-none overflow-y-auto"
+      >
+        <div class="grid gap-4 lg:grid-cols-[240px_1fr]">
+          <div class="bg-base-200 rounded-box p-0">
+            <ul class="menu">
+              {settingsSections.map((section) => {
+                const isActive = settingsSection === section.id;
+                return (
+                  <li key={section.id}>
+                    <button
+                      type="button"
+                      class={`rounded-none flex flex-col items-start gap-0.5 ${
+                        isActive
+                          ? "bg-base-300 border-l-4 border-primary"
+                          : ""
+                      }`}
+                      onClick={() => setSettingsSection(section.id)}
+                    >
+                      <span class="font-medium">{section.title}</span>
+                      <span class="text-xs text-base-content/60">
+                        {section.subtitle}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div class="bg-base-100 rounded-box border border-base-200 p-4 min-h-[360px]">
+            {settingsSection === "configuration" && (
+              <div class="space-y-4">
+                <div>
+                  <h4 class="text-lg font-semibold">Configuration</h4>
+                  <p class="text-sm text-base-content/60">
+                    Read-only diagnostics for your Flux instance.
+                  </p>
+                </div>
+                <div class="space-y-3">
+                  <div class="rounded-lg border border-base-200 p-3">
+                    <div class="text-xs uppercase tracking-wide text-base-content/60">
+                      API Location
+                    </div>
+                    <div class="mt-1 font-mono text-xs">{apiLocation}</div>
+                  </div>
+                  <div class="rounded-lg border border-base-200 p-3">
+                    <div class="text-xs uppercase tracking-wide text-base-content/60">
+                      Events Stream
+                    </div>
+                    <div class="mt-1 font-mono text-xs">{sseLocation}</div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex items-center gap-3 rounded-lg border border-base-200 p-3">
+                    <span
+                      class={`h-2.5 w-2.5 rounded-full ${statusDotClass(
+                        apiStatus
+                      )}`}
+                    ></span>
+                    <div>
+                      <div class="text-sm font-medium">API Status</div>
+                      <div class="text-xs text-base-content/60">
+                        {statusLabel(apiStatus)}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3 rounded-lg border border-base-200 p-3">
+                    <span
+                      class={`h-2.5 w-2.5 rounded-full ${statusDotClass(
+                        sseStatus
+                      )}`}
+                    ></span>
+                    <div>
+                      <div class="text-sm font-medium">SSE Updates</div>
+                      <div class="text-xs text-base-content/60">
+                        {statusLabel(sseStatus)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {settingsSection === "webhooks" && (
+              <div class="space-y-4">
+                <WebhooksPanel />
+              </div>
+            )}
+
+            {settingsSection === "reset" && (
+              <div class="space-y-4">
+                <div>
+                  <h4 class="text-lg font-semibold">Reset Database</h4>
+                  <p class="text-sm text-base-content/60">
+                    This will wipe all projects, tasks, epics, and webhooks.
+                  </p>
+                </div>
+                <div class="alert alert-warning">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.591c.75 1.334-.213 2.99-1.742 2.99H3.48c-1.53 0-2.493-1.656-1.743-2.99L8.257 3.1z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                  <span>
+                    This action is permanent. You cannot undo a reset.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-error"
+                  onClick={handleReset}
+                  disabled={resetting}
+                >
+                  {resetting ? (
+                    <span class="loading loading-spinner loading-sm"></span>
+                  ) : (
+                    "Reset Database"
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={!!editingProject}

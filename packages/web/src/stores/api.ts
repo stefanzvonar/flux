@@ -140,6 +140,11 @@ export async function cleanupProject(
   return res.json();
 }
 
+export async function resetDatabase(): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/reset`, { method: 'POST' });
+  return res.json();
+}
+
 // ============ Webhook Operations ============
 
 export async function getWebhooks(): Promise<Webhook[]> {

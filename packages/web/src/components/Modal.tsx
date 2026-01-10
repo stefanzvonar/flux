@@ -6,9 +6,10 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: ComponentChildren
+  boxClassName?: string
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, boxClassName }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       onClick={handleBackdropClick}
       onClose={onClose}
     >
-      <div class="modal-box w-full max-w-xl">
+      <div class={`modal-box w-full max-w-xl ${boxClassName ?? ''}`}>
         <h3 class="font-bold text-lg mb-4">{title}</h3>
         {children}
       </div>
