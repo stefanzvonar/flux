@@ -1,8 +1,9 @@
 {
   "name": "flux",
-  "description": "Generate epics and tasks in Flux from project requirements",
+  "description": "Generate epics and tasks in Flux from project requirements. Ship with less chaos.",
   "version": "1.0.0",
   "author": {
     "name": "sirsjg"
-  }
+  },
+  "repository": "https://github.com/sirsjg/flux"
 }
