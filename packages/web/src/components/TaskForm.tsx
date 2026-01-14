@@ -206,7 +206,7 @@ export function TaskForm({
 
   const addGuardrail = () => {
     const num = parseInt(newGuardrailNumber);
-    if (isNaN(num) || !newGuardrailText.trim()) return;
+    if (isNaN(num) || num <= 0 || !newGuardrailText.trim()) return;
     setGuardrails((prev) => [...prev, { number: num, text: newGuardrailText.trim() }]);
     setNewGuardrailNumber("");
     setNewGuardrailText("");
@@ -402,7 +402,7 @@ export function TaskForm({
                 Numbered constraints (higher number = more critical)
               </p>
               <div class="space-y-2">
-                {guardrails
+                {[...guardrails]
                   .sort((a, b) => b.number - a.number)
                   .map((guardrail, index) => (
                     <div
@@ -442,7 +442,7 @@ export function TaskForm({
                     type="button"
                     class="btn btn-sm btn-outline"
                     onClick={addGuardrail}
-                    disabled={!newGuardrailNumber || !newGuardrailText.trim()}
+                    disabled={!newGuardrailNumber || parseInt(newGuardrailNumber) <= 0 || !newGuardrailText.trim()}
                   >
                     Add
                   </button>
