@@ -35,7 +35,7 @@ export async function primeCommand(
 
   if (json) {
     const projects = await getProjects();
-    const tasks = await getReadyTasks();
+    const tasks = await getReadyTasks(defaultProject);
     output({
       mode: isMcpMode ? 'mcp' : 'cli',
       project: defaultProject,
@@ -55,7 +55,7 @@ export async function primeCommand(
 
   // Show ready task count
   try {
-    const tasks = await getReadyTasks();
+    const tasks = await getReadyTasks(defaultProject);
     if (tasks.length > 0) {
       const p0 = tasks.filter(t => t.priority === 0).length;
       const p1 = tasks.filter(t => t.priority === 1).length;
