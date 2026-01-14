@@ -42,6 +42,7 @@ export function TaskForm({
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [commentBody, setCommentBody] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [blockedReason, setBlockedReason] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
 
@@ -75,12 +76,14 @@ export function TaskForm({
       setEpicId(task.epic_id || "");
       setDependsOn([...task.depends_on]);
       setComments(task.comments ? [...task.comments] : []);
+      setBlockedReason(task.blocked_reason || "");
     } else {
       setTitle("");
       setStatus("todo");
       setEpicId(defaultEpicId || "");
       setDependsOn([]);
       setComments([]);
+      setBlockedReason("");
     }
   };
 
@@ -96,6 +99,7 @@ export function TaskForm({
           status,
           epic_id: epicId || undefined,
           depends_on: dependsOn,
+          blocked_reason: blockedReason.trim() || undefined,
         });
       } else {
         const newTask = await createTask(
@@ -219,6 +223,29 @@ export function TaskForm({
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {isEdit && (
+              <div class="form-control mb-4">
+                <label class="label">
+                  <span class="label-text">External Blocker</span>
+                  {blockedReason && (
+                    <span class="badge badge-warning badge-sm">Blocked</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Waiting for vendor quote"
+                  class="input input-bordered w-full"
+                  value={blockedReason}
+                  onInput={(e) => setBlockedReason((e.target as HTMLInputElement).value)}
+                />
+                <label class="label">
+                  <span class="label-text-alt text-base-content/50">
+                    Set to block task on external process. Clear to unblock.
+                  </span>
+                </label>
               </div>
             )}
 
