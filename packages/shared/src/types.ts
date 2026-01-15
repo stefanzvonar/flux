@@ -32,6 +32,7 @@ export type TaskComment = {
 
 // Guardrail for agent loop integration (higher number = more critical)
 export type Guardrail = {
+  id: string;
   number: number;
   text: string;
 };

@@ -205,15 +205,15 @@ export function TaskForm({
   };
 
   const addGuardrail = () => {
-    const num = parseInt(newGuardrailNumber);
+    const num = Math.floor(parseInt(newGuardrailNumber));
     if (isNaN(num) || num <= 0 || !newGuardrailText.trim()) return;
-    setGuardrails((prev) => [...prev, { number: num, text: newGuardrailText.trim() }]);
+    setGuardrails((prev) => [...prev, { id: crypto.randomUUID(), number: num, text: newGuardrailText.trim() }]);
     setNewGuardrailNumber("");
     setNewGuardrailText("");
   };
 
-  const removeGuardrail = (index: number) => {
-    setGuardrails((prev) => prev.filter((_, i) => i !== index));
+  const removeGuardrail = (id: string) => {
+    setGuardrails((prev) => prev.filter((g) => g.id !== id));
   };
 
   return (
@@ -404,9 +404,9 @@ export function TaskForm({
               <div class="space-y-2">
                 {[...guardrails]
                   .sort((a, b) => b.number - a.number)
-                  .map((guardrail, index) => (
+                  .map((guardrail) => (
                     <div
-                      key={index}
+                      key={guardrail.id}
                       class="flex items-start gap-2 border border-base-300 rounded-lg p-2"
                     >
                       <span class="badge badge-outline badge-sm font-mono">
@@ -416,7 +416,7 @@ export function TaskForm({
                       <button
                         type="button"
                         class="btn btn-ghost btn-xs"
-                        onClick={() => removeGuardrail(guardrails.findIndex(g => g.number === guardrail.number && g.text === guardrail.text))}
+                        onClick={() => removeGuardrail(guardrail.id)}
                       >
                         ×
                       </button>

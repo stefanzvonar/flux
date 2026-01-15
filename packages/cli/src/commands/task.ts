@@ -23,7 +23,7 @@ function parseGuardrail(s: string): Guardrail | null {
   if (isNaN(num) || num <= 0) return null;
   const text = s.slice(colonIdx + 1).trim();
   if (!text) return null;
-  return { number: num, text };
+  return { id: crypto.randomUUID(), number: num, text };
 }
 
 export async function taskCommand(
@@ -110,7 +110,11 @@ export async function taskCommand(
       let guardrails: Guardrail[] | undefined;
       if (guardrailRaw) {
         const items = Array.isArray(guardrailRaw) ? guardrailRaw : [guardrailRaw as string];
-        guardrails = items.map(parseGuardrail).filter((g): g is Guardrail => g !== null);
+        const parsed = items.map(s => ({ input: s, result: parseGuardrail(s) }));
+        for (const { input, result } of parsed) {
+          if (!result) console.error(`Warning: invalid guardrail format "${input}" (expected "999:text")`);
+        }
+        guardrails = parsed.map(p => p.result).filter((g): g is Guardrail => g !== null);
         if (guardrails.length === 0) guardrails = undefined;
       }
 
@@ -126,7 +130,7 @@ export async function taskCommand(
     case 'update': {
       const id = args[0];
       if (!id) {
-        console.error('Usage: flux task update <id> [--title] [--status] [--note] [--epic] [-d|--depends id,...] [--blocked "reason"|clear] [--ac ...] [--guardrail ...]');
+        console.error('Usage: flux task update <id> [--title] [--status] [--note] [--epic] [-d|--depends id,...] [--blocked "reason"|clear] [--ac ...] [--guardrail ...] [--clear-ac] [--clear-guardrails]');
         process.exit(1);
       }
 
@@ -137,7 +141,7 @@ export async function taskCommand(
           console.error(`Task not found: ${id}`);
           process.exit(1);
         }
-        if (!flags.title && !flags.status && !flags.epic && !flags.P && !flags.priority && flags.blocked === undefined && !flags.ac && !flags.guardrail) {
+        if (!flags.title && !flags.status && !flags.epic && !flags.P && !flags.priority && flags.blocked === undefined && !flags.ac && !flags.guardrail && !flags['clear-ac'] && !flags['clear-guardrails']) {
           const task = await getTask(id);
           output(json ? task : `Added comment to task: ${id}`, json);
           return;
@@ -165,18 +169,26 @@ export async function taskCommand(
         updates.blocked_reason = (blockedVal === 'clear' || blockedVal === '-' || blockedVal === '') ? undefined : blockedVal;
       }
 
-      // Parse acceptance criteria (--ac can be repeated)
-      if (flags.ac) {
+      // Parse acceptance criteria (--ac can be repeated) or clear with --clear-ac
+      if (flags['clear-ac']) {
+        updates.acceptance_criteria = [];
+      } else if (flags.ac) {
         const acRaw = flags.ac;
         updates.acceptance_criteria = Array.isArray(acRaw) ? acRaw : [acRaw as string];
       }
 
-      // Parse guardrails (--guardrail "999:text")
-      if (flags.guardrail) {
+      // Parse guardrails (--guardrail "999:text") or clear with --clear-guardrails
+      if (flags['clear-guardrails']) {
+        updates.guardrails = [];
+      } else if (flags.guardrail) {
         const guardrailRaw = flags.guardrail;
         const items = Array.isArray(guardrailRaw) ? guardrailRaw : [guardrailRaw as string];
-        const parsed = items.map(parseGuardrail).filter((g): g is Guardrail => g !== null);
-        if (parsed.length > 0) updates.guardrails = parsed;
+        const parsed = items.map(s => ({ input: s, result: parseGuardrail(s) }));
+        for (const { input, result } of parsed) {
+          if (!result) console.error(`Warning: invalid guardrail format "${input}" (expected "999:text")`);
+        }
+        const valid = parsed.map(p => p.result).filter((g): g is Guardrail => g !== null);
+        if (valid.length > 0) updates.guardrails = valid;
       }
 
       const task = await updateTask(id, updates);

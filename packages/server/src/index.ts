@@ -64,6 +64,33 @@ console.log(`Flux server using: ${DATA_FILE}`);
 // Set up webhook event handler
 setWebhookEventHandler(handleWebhookEvent);
 
+// Validate task fields (acceptance_criteria, guardrails)
+function validateTaskFields(body: Record<string, unknown>): { error?: string } {
+  if (body.acceptance_criteria !== undefined) {
+    if (!Array.isArray(body.acceptance_criteria)) {
+      return { error: 'acceptance_criteria must be an array' };
+    }
+    if (body.acceptance_criteria.some((c: unknown) => typeof c !== 'string' || !(c as string).trim())) {
+      return { error: 'acceptance_criteria must contain non-empty strings' };
+    }
+  }
+  if (body.guardrails !== undefined) {
+    if (!Array.isArray(body.guardrails)) {
+      return { error: 'guardrails must be an array' };
+    }
+    for (const g of body.guardrails as unknown[]) {
+      const gr = g as Record<string, unknown>;
+      if (typeof gr.number !== 'number' || gr.number <= 0 || !Number.isInteger(gr.number)) {
+        return { error: 'guardrail number must be a positive integer' };
+      }
+      if (typeof gr.text !== 'string' || !gr.text.trim()) {
+        return { error: 'guardrail text must be a non-empty string' };
+      }
+    }
+  }
+  return {};
+}
+
 // Create Hono app
 const app = new Hono();
 
@@ -296,6 +323,8 @@ app.delete('/api/tasks/:id/comments/:commentId', (c) => {
 
 app.post('/api/projects/:projectId/tasks', async (c) => {
   const body = await c.req.json();
+  const validation = validateTaskFields(body);
+  if (validation.error) return c.json({ error: validation.error }, 400);
   const projectId = c.req.param('projectId');
   const task = createTask(projectId, body.title, body.epic_id, {
     priority: body.priority,
@@ -310,6 +339,8 @@ app.post('/api/projects/:projectId/tasks', async (c) => {
 
 app.patch('/api/tasks/:id', async (c) => {
   const body = await c.req.json();
+  const validation = validateTaskFields(body);
+  if (validation.error) return c.json({ error: validation.error }, 400);
   const previous = getTask(c.req.param('id'));
   const task = updateTask(c.req.param('id'), body);
   if (!task) return c.json({ error: 'Task not found' }, 404);
